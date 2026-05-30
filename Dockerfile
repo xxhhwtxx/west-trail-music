@@ -7,5 +7,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY server.py index.html default-cover.svg ./
 
-# Railway 用 PORT 环境变量
-CMD ["sh", "-c", "python server.py"]
+EXPOSE 8000
+CMD ["sh", "-c", "exec python -m uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
