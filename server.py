@@ -120,7 +120,7 @@ async def login(username: str, password: str):
 
 # ── 播放列表 ────────────────────────────────────
 @app.get("/api/playlists")
-async def pl_list(uid: str):
+async def pl_list(uid: str = "guest"):
     return {"success": True, "playlists": sorted(f.stem for f in (_d(uid) / "playlists").glob("*.json"))}
 
 @app.post("/api/playlists")
@@ -159,7 +159,7 @@ async def fav_toggle(uid: str, mid: str, name: str, singer: str = "", album: str
 
 # ── 历史 ────────────────────────────────────────
 @app.post("/api/history")
-async def his_add(uid: str, mid: str, name: str, singer: str = "", album: str = "", cover: str = "", interval: int = 0):
+async def his_add(uid: str = "guest", mid: str = "", name: str = "", singer: str = "", album: str = "", cover: str = "", interval: int = 0):
     p = _d(uid) / "history.json"
     d = load(p, {"recent": []})
     d["recent"] = [r for r in d["recent"] if r["mid"] != mid]
@@ -167,7 +167,7 @@ async def his_add(uid: str, mid: str, name: str, singer: str = "", album: str = 
     d["recent"] = d["recent"][:50]; save(p, d); return {"success": True}
 
 @app.get("/api/history")
-async def his_get(uid: str):
+async def his_get(uid: str = "guest"):
     return {"success": True, "recent": load(_d(uid) / "history.json", {"recent": []})["recent"]}
 
 # ── 反馈 ────────────────────────────────────────
@@ -215,6 +215,31 @@ async def feedback(uid: str = "", nickname: str = "", content: str = ""):
             s.sendmail(APP_EMAIL, [APP_EMAIL], msg.as_string())
         return {"success": True}
     except Exception as e: return {"success": False, "message": str(e)}
+
+# ── 本地文件管理 ────────────────────────────────
+DOWNLOADS = BASE / "downloads"; DOWNLOADS.mkdir(exist_ok=True)
+
+@app.get("/api/downloads")
+async def list_downloads():
+    files = []
+    for f in sorted(DOWNLOADS.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+        if f.suffix.lower() in (".mp3", ".flac", ".ogg", ".m4a"):
+            sz = f.stat().st_size / (1024 * 1024)
+            mt = time.strftime("%Y-%m-%d %H:%M", time.localtime(f.stat().st_mtime))
+            files.append({"filename": f.name, "size_mb": round(sz, 2), "time": mt})
+    return {"success": True, "files": files}
+
+@app.get("/api/delete-download")
+async def delete_download(filename: str):
+    fp = (DOWNLOADS / filename).resolve()
+    if not str(fp).startswith(str(DOWNLOADS.resolve())): return {"success": False}
+    if fp.exists(): fp.unlink()
+    return {"success": True}
+
+@app.get("/api/open-folder")
+async def open_folder():
+    if sys.platform == 'win32': os.startfile(str(DOWNLOADS))
+    return {"success": True}
 
 # ═══════════════════════════════════════════════════
 if __name__ == "__main__":
