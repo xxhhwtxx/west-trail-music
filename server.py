@@ -72,9 +72,21 @@ async def refresh_and_save():
     try:
         new_cred = await Client(credential=cred).login.refresh_credential(cred)
         save_credential(new_cred)
+        print("CURRENT_CREDENTIAL:", json.dumps(new_cred.model_dump(by_alias=True), ensure_ascii=False))
         return True
     except Exception:
         return False
+
+@app.on_event("startup")
+async def startup_refresh():
+    """Auto-refresh credential on startup"""
+    if load_credential():
+        await refresh_and_save()
+
+@app.get("/api/refresh-credential")
+async def refresh_cred():
+    ok = await refresh_and_save()
+    return {"success": ok, "message": "凭证已刷新" if ok else "刷新失败"}
 
 # ── 元数据 ────────────────────────────────────────
 def embed_metadata(filepath: str, title: str, artist: str, album: str, cover_data: bytes | None):
