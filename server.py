@@ -3,7 +3,7 @@ from pathlib import Path
 from email.mime.text import MIMEText
 from email.header import Header
 from fastapi import FastAPI, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from qqmusic_api import Client, Credential
 from qqmusic_api.modules.song import SongFileInfo, SongFileType
