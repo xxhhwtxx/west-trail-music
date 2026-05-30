@@ -1,0 +1,7 @@
+[build]
+builder = "docker"
+
+[deploy]
+healthcheckPath = "/api/search"
+healthcheckTimeout = 100
+restartPolicyType = "always"
