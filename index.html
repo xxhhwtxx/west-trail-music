@@ -386,6 +386,9 @@ input[type=checkbox]:checked::after{content:'';position:absolute;left:4px;top:1p
 const A=document.getElementById('audio'),
   Q=()=>document.getElementById('quality').value,
   $=id=>document.getElementById(id);
+// Unlock audio for mobile (must be triggered by user gesture)
+document.addEventListener('click',()=>{A.play().then(()=>A.pause()).catch(()=>{})},{once:true});
+document.addEventListener('touchend',()=>{A.play().then(()=>A.pause()).catch(()=>{})},{once:true});
 let playlist=[],idx=-1,currentSong=null,searchData=[],shuffle=false,ctxTarget=null;
 let lyricMode='linear',lyricData=[],rafId,analyser,spectrumCtx;
 
@@ -518,10 +521,8 @@ function playSong(mid,name,singer,cover,interval){
   }else{
     $('npCover').style.display='none';$('npCoverFallback').style.display='';
   }
-  // Try direct CDN playback first, fallback to stream proxy
-  fetch(`/api/play-url?mid=${mid}&quality=${Q()}`).then(r=>r.json()).then(d=>{
-    if(d.success&&d.url){A.src=d.url;A.play();}
-  }).catch(()=>{A.src=`/api/stream-play?mid=${mid}&quality=${Q()}`;A.play();});
+  A.src=`/api/stream-play?mid=${mid}&quality=${Q()}`;
+  var p=A.play();if(p!==undefined){p.catch(()=>{toast('点击播放按钮开始播放','info')})};
   $('playBtn').textContent='⏸';
   // Cache cover
   if(cover) fetch(`/api/covers/cache/${mid}?url=${encodeURIComponent(cover)}`);
