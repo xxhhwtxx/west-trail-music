@@ -10,3 +10,5 @@ build/
 Desktop.ini
 Thumbs.db
 credential.json
+.idea/
+users/
