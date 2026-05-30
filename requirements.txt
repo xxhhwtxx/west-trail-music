@@ -1,0 +1,6 @@
+fastapi>=0.100.0
+uvicorn>=0.23.0
+qqmusic-api-python
+mutagen>=1.47.0
+pywebview
+python-multipart

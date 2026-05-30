@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>West Trail Music</title>
+<style>
+:root {
+  --bg:#000; --surface:rgba(255,255,255,.06); --elevated:rgba(255,255,255,.1);
+  --text:#fff; --sub:rgba(255,255,255,.55); --accent:#fa586a; --accent2:#ff6b7f;
+  --sidebar-w:260px; --player-h:72px; --radius:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+
+/* App Layout */
+.app{display:flex;height:calc(100vh - var(--player-h))}
+.sidebar{width:var(--sidebar-w);background:#0a0a0a;display:flex;flex-direction:column;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);overflow:hidden}
+.sidebar-header{padding:20px 20px 8px;display:flex;align-items:center;gap:10px}
+.sidebar-header .logo{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.sidebar-header span{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.sidebar-nav{padding:20px 12px 8px;display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;font-size:13.5px;font-weight:500;color:var(--sub);cursor:pointer;transition:.15s}
+.nav-item:hover{color:var(--text);background:var(--surface)}
+.nav-item.active{color:var(--text);background:var(--elevated)}
+.nav-item .icon{font-size:18px;width:22px;text-align:center}
+.sidebar-divider{height:1px;background:rgba(255,255,255,.06);margin:12px 20px}
+.playlist-section{flex:1;overflow-y:auto;padding:0 12px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent}
+.playlist-section::-webkit-scrollbar{width:4px}
+.playlist-section::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+.playlist-header{display:flex;align-items:center;justify-content:space-between;padding:4px 12px 8px;color:var(--sub);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.playlist-header button{background:none;border:none;color:var(--sub);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:.15s}
+.playlist-header button:hover{color:var(--text);background:var(--surface)}
+.playlist-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;font-size:13px;color:var(--sub);cursor:pointer;transition:.15s}
+.playlist-item:hover{color:var(--text);background:var(--surface)}
+.playlist-item.active{color:var(--text);background:var(--elevated)}
+.playlist-item .pl-icon{font-size:16px}
+.playlist-ctx{display:none;position:fixed;background:#2c2c2e;border-radius:8px;padding:4px;min-width:140px;z-index:200;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.playlist-ctx.show{display:block}
+.playlist-ctx div{padding:8px 16px;font-size:13px;border-radius:6px;cursor:pointer;color:var(--text)}
+.playlist-ctx div:hover{background:rgba(255,255,255,.1)}
+.playlist-ctx div.danger{color:#ff453a}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:linear-gradient(180deg,#1a1a1e 0%,var(--bg) 300px)}
+.main-header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;gap:16px}
+.login-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;background:var(--surface);color:var(--sub);border:none}
+.login-btn:hover{color:var(--text);background:var(--elevated)}
+.login-btn.logged-in{color:var(--accent)}
+.search-box{display:flex;align-items:center;background:rgba(255,255,255,.08);border-radius:10px;padding:8px 14px;flex:1;max-width:420px;border:1px solid transparent;transition:.2s}
+.search-box:focus-within{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.15)}
+.search-box input{flex:1;background:none;border:none;color:var(--text);font-size:14px;outline:none}
+.search-box input::placeholder{color:var(--sub)}
+.search-box svg{color:var(--sub);flex-shrink:0}
+.top-ctrls{display:flex;align-items:center;gap:10px}
+.top-ctrls select{background:var(--surface);color:var(--text);border:none;padding:8px 14px;border-radius:8px;font-size:12px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23fff'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.btn{padding:9px 20px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.15s}
+.btn-accent{background:var(--accent);color:#fff}.btn-accent:hover{background:var(--accent2);transform:scale(1.02)}
+.btn-accent:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-subtle{background:var(--surface);color:var(--text)}.btn-subtle:hover{background:var(--elevated)}
+
+.content{flex:1;overflow-y:auto;padding:0 28px 20px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent}
+.content::-webkit-scrollbar{width:6px}
+.content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+
+/* Song List */
+.section-title{font-size:20px;font-weight:700;margin-bottom:16px;letter-spacing:-.3px}
+.song-list-header{display:grid;grid-template-columns:40px 1fr 200px 80px 80px;padding:6px 12px;color:var(--sub);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:4px}
+.song-row{display:grid;grid-template-columns:40px 1fr 200px 80px 80px;padding:6px 12px;border-radius:8px;align-items:center;cursor:pointer;transition:.15s}
+.song-row:hover{background:var(--surface)}
+.song-row.playing{background:rgba(250,88,106,.15)}
+.song-row .idx{color:var(--sub);font-size:13px;text-align:center}
+.song-row.playing .idx{color:var(--accent)}
+.song-row .info{display:flex;align-items:center;gap:12px;overflow:hidden}
+.song-row .info img{width:40px;height:40px;border-radius:4px;object-fit:cover;background:var(--surface);flex-shrink:0}
+.song-row .meta{overflow:hidden}
+.song-row .meta .t{font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.song-row .meta .a{font-size:12px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.song-row .album{font-size:13px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.song-row .dur{font-size:13px;color:var(--sub);text-align:center}
+.song-row .actions{display:flex;gap:4px;justify-content:flex-end}
+.song-row .actions button{background:none;border:none;color:var(--sub);cursor:pointer;font-size:16px;padding:6px;border-radius:50%;transition:.15s;opacity:0}
+.song-row:hover .actions button{opacity:1}
+.song-row .actions button:hover{color:var(--text);background:var(--elevated)}
+.song-row .actions button.liked{color:var(--accent);opacity:1}
+
+/* Player */
+.player{position:fixed;bottom:0;left:0;right:0;height:var(--player-h);background:rgba(20,20,22,.95);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border-top:1px solid rgba(255,255,255,.08);display:grid;grid-template-columns:280px 1fr 280px;align-items:center;padding:0 16px;z-index:100}
+.np{display:flex;align-items:center;gap:12px;overflow:hidden}
+.np img{width:48px;height:48px;border-radius:6px;object-fit:cover;background:var(--surface);flex-shrink:0;position:relative}
+.np-cover-wrap{position:relative;flex-shrink:0;cursor:pointer}
+.np-cover-wrap .cover-upload{position:absolute;bottom:0;right:0;width:20px;height:20px;background:rgba(0,0,0,.7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;opacity:0;transition:.2s;cursor:pointer;border:none;color:#fff}
+.np-cover-wrap:hover .cover-upload{opacity:1}
+.np-info{overflow:hidden}
+.np-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.np-artist{font-size:11px;color:var(--sub);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctrl{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ctrl-btns{display:flex;align-items:center;gap:16px}
+.ctrl-btns button{background:none;border:none;color:var(--text);cursor:pointer;font-size:16px;padding:4px;border-radius:50%;transition:.15s}
+.ctrl-btns button:hover{transform:scale(1.1)}
+.ctrl-btns .play-pause{width:34px;height:34px;background:var(--text);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px}
+.ctrl-btns .play-pause:hover{transform:scale(1.06)}
+.prog-row{display:flex;align-items:center;gap:8px;width:100%;max-width:500px}
+.prog-time{font-size:10px;color:var(--sub);min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
+.prog-bar{flex:1;height:4px;background:rgba(255,255,255,.15);border-radius:2px;cursor:pointer;position:relative}
+.prog-bar:hover{height:6px}
+.prog-fill{height:100%;background:var(--text);border-radius:2px;width:0;transition:width .1s linear}
+.prog-bar:hover .prog-fill{background:var(--accent)}
+.extra{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+.extra button{background:none;border:none;color:var(--sub);cursor:pointer;font-size:14px;padding:6px;border-radius:50%;transition:.15s}
+.extra button:hover{color:var(--text)}
+.extra button.active{color:var(--accent)}
+.vol-wrap{display:flex;align-items:center;gap:6px}
+.vol-bar{width:80px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;cursor:pointer}
+.vol-fill{height:100%;background:var(--text);border-radius:2px}
+.vol-bar:hover .vol-fill{background:var(--accent)}
+
+/* Lyrics Panel */
+.lyrics-panel{position:fixed;top:0;left:0;right:0;bottom:var(--player-h);background:rgba(0,0,0,.92);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);z-index:90;display:none;flex-direction:column}
+.lyrics-panel.active{display:flex}
+.lyrics-header{display:flex;align-items:center;justify-content:flex-end;padding:16px 24px;gap:12px}
+.lyrics-header select{background:rgba(255,255,255,.1);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:12px;outline:none}
+.lyrics-body{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.lyrics-left{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;max-width:400px}
+.lyrics-left canvas{width:300px;height:300px;border-radius:50%}
+.lyrics-left .vinyl-art{width:240px;height:240px;border-radius:50%;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.lyrics-line-wrap{flex:1;max-width:600px;height:80%;overflow-y:auto;padding:0 20px;mask-image:linear-gradient(to bottom,transparent 0,#000 10%,#000 90%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 10%,#000 90%,transparent 100%);scrollbar-width:none}
+.lyrics-line-wrap::-webkit-scrollbar{display:none}
+.lyric-line{font-size:28px;font-weight:700;color:rgba(255,255,255,.25);padding:16px 0;transition:all .4s cubic-bezier(.25,.1,.25,1);text-align:center}
+.lyric-line.active{color:var(--accent);font-size:36px;text-shadow:0 0 40px var(--accent)}
+.lyric-line.karaoke{text-align:left;font-size:22px;padding:10px 0}
+.lyric-line.karaoke.active{font-size:22px;color:#fff}
+.lyric-line.karaoke .word{transition:all .3s;display:inline-block}
+.lyric-line.karaoke .word.sung{
+  color:var(--accent);
+  text-shadow:0 0 12px var(--accent),0 0 24px var(--accent);
+  animation:sweepIn .4s ease-out;
+}
+@keyframes sweepIn{
+  0%{color:transparent;text-shadow:0 0 30px var(--accent),0 0 60px var(--accent);transform:scale(1.1)}
+  100%{color:var(--accent);text-shadow:0 0 12px var(--accent),0 0 24px var(--accent);transform:scale(1)}
+}
+
+/* Spectrum */
+#spectrum{position:fixed;bottom:var(--player-h);left:0;right:0;height:60px;z-index:99;pointer-events:none;opacity:.6}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:#1c1c1e;border-radius:16px;padding:24px;min-width:360px;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal h3{font-size:18px;margin-bottom:16px}
+.modal input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;color:#fff;font-size:14px;outline:none;margin-bottom:12px}
+.modal input:focus{border-color:var(--accent)}
+.modal .btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.qr-code{text-align:center;padding:20px}
+.qr-code img{width:200px;height:200px;background:#fff;border-radius:8px}
+.qr-code p{color:var(--sub);margin-top:12px;font-size:13px}
+
+/* Toast */
+.toasts{position:fixed;bottom:calc(var(--player-h) + 12px);left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;animation:toastIn .3s ease;pointer-events:auto;background:var(--accent);color:#fff}
+.toast.warn{background:#ff9f0a;color:#000}
+.toast.info{background:#0a84ff}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--sub);text-align:center}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.4}
+.empty-title{font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px}
+.empty-sub{font-size:13px}
+
+/* Checkbox */
+input[type=checkbox]{appearance:none;width:15px;height:15px;border:1.5px solid rgba(255,255,255,.25);border-radius:4px;cursor:pointer;position:relative;flex-shrink:0}
+input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+input[type=checkbox]:checked::after{content:'';position:absolute;left:4px;top:1px;width:4px;height:7px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+</style>
+</head>
+<body>
+
+<div class="toasts" id="toasts"></div>
+
+<!-- Login Modal -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <h3>登录 QQ 音乐</h3>
+    <div class="qr-code" id="qrBox">
+      <p>请使用 QQ 音乐 APP 扫描二维码</p>
+      <img id="qrImg" src="" alt="QR Code" style="display:none">
+      <p id="qrMsg" style="margin-top:12px"></p>
+    </div>
+    <p style="font-size:12px;color:var(--sub);margin-top:12px">或者手动放置 <code>credential.json</code> 到程序目录</p>
+    <div class="btn-row">
+      <button class="btn btn-subtle" onclick="document.getElementById('loginModal').classList.remove('active')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Modal -->
+<div class="modal-overlay" id="renameModal">
+  <div class="modal">
+    <h3>重命名播放列表</h3>
+    <input type="text" id="renameInput" placeholder="输入新名称">
+    <div class="btn-row">
+      <button class="btn btn-subtle" onclick="document.getElementById('renameModal').classList.remove('active')">取消</button>
+      <button class="btn btn-accent" onclick="doRename()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Modal -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <h3>新建播放列表</h3>
+    <input type="text" id="createInput" placeholder="输入播放列表名称" onkeydown="if(event.key==='Enter')doCreate()">
+    <div class="btn-row">
+      <button class="btn btn-subtle" onclick="document.getElementById('createModal').classList.remove('active')">取消</button>
+      <button class="btn btn-accent" onclick="doCreate()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input for cover upload -->
+<input type="file" id="coverInput" accept="image/*" style="display:none" onchange="uploadCover()">
+
+<!-- Layout -->
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">♪</div>
+      <span>West Trail Music</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-view="search"><span class="icon">🔍</span> 发现</div>
+      <div class="nav-item" data-view="recent"><span class="icon">🕐</span> 最近播放</div>
+      <div class="nav-item" data-view="downloads"><span class="icon">📥</span> 下载</div>
+    </nav>
+    <div class="sidebar-divider"></div>
+    <div class="playlist-header">
+      <span>播放列表</span>
+      <button onclick="showCreateModal()" title="新建">+</button>
+    </div>
+    <div class="playlist-section" id="playlistList"></div>
+  </aside>
+
+  <main class="main">
+    <div class="main-header">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="keyword" placeholder="歌曲、艺人或专辑…" onkeydown="if(event.key==='Enter')search()">
+      </div>
+      <div class="top-ctrls">
+        <select id="quality" onchange="saveSetting('quality',this.value)">
+          <option value="128mp3">标准 128k</option>
+          <option value="320mp3" selected>高品质 320k</option>
+          <option value="flac">无损 FLAC</option>
+        </select>
+        <button class="btn btn-accent" id="btnBatch" onclick="batchDownload()" disabled style="display:none">批量下载</button>
+        <button class="login-btn" id="loginBtn" onclick="showLogin()">👤 登录</button>
+      </div>
+    </div>
+    <div class="content" id="content">
+      <!-- Dynamic views injected here -->
+    </div>
+  </main>
+</div>
+
+<!-- Player -->
+<footer class="player">
+  <audio id="audio"></audio>
+  <div class="np">
+    <div class="np-cover-wrap" onclick="toggleLyrics()">
+      <img id="npCover" src="" alt="" style="display:none">
+      <span id="npCoverFallback" style="width:48px;height:48px;background:var(--surface);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px">🎵</span>
+      <button class="cover-upload" onclick="event.stopPropagation();document.getElementById('coverInput').click()" title="更换封面">📷</button>
+    </div>
+    <div class="np-info">
+      <div class="np-name" id="npName">未在播放</div>
+      <div class="np-artist" id="npArtist">选择一首歌开始</div>
+    </div>
+  </div>
+  <div class="ctrl">
+    <div class="ctrl-btns">
+      <button onclick="prevSong()">⏮</button>
+      <button class="play-pause" id="playBtn" onclick="togglePlay()">▶</button>
+      <button onclick="nextSong()">⏭</button>
+    </div>
+    <div class="prog-row">
+      <span class="prog-time" id="curTime">0:00</span>
+      <div class="prog-bar" onclick="seek(event)"><div class="prog-fill" id="progFill"></div></div>
+      <span class="prog-time" id="durTime">0:00</span>
+    </div>
+  </div>
+  <div class="extra">
+    <button id="lyricBtn" onclick="toggleLyrics()" class="">🎤</button>
+    <canvas id="spectrum" width="400" height="60"></canvas>
+    <button onclick="toggleShuffle()" id="shuffleBtn">🔀</button>
+    <button onclick="toggleMute()" id="muteBtn">🔊</button>
+    <div class="vol-wrap">
+      <div class="vol-bar" onclick="setVol(event)"><div class="vol-fill" id="volFill" style="width:100%"></div></div>
+    </div>
+  </div>
+</footer>
+
+<!-- Lyrics Panel -->
+<div class="lyrics-panel" id="lyricsPanel">
+  <div class="lyrics-header">
+    <select id="lyricModeSel" onchange="switchLyricMode(this.value)">
+      <option value="linear">经典居中</option>
+      <option value="karaoke">逐字高亮</option>
+      <option value="scroll">滚动字幕</option>
+    </select>
+    <input type="color" id="lyricColor" value="#fa586a" onchange="changeLyricColor(this.value)" title="主题色" style="width:28px;height:28px;border:none;cursor:pointer;background:transparent;padding:0;border-radius:50%;overflow:hidden">
+    <button class="btn btn-subtle" onclick="toggleLyrics()">✕ 关闭</button>
+  </div>
+  <div class="lyrics-body">
+    <div class="lyrics-left">
+      <canvas id="lyricCanvas" width="300" height="300" style="border-radius:50%"></canvas>
+      <div style="margin-top:16px;display:none" id="vinylWrap">
+        <img id="vinylImg" class="vinyl-art" src="">
+      </div>
+    </div>
+    <div class="lyrics-line-wrap" id="lyricLines">
+      <div class="empty"><div class="empty-icon">🎤</div><div class="empty-title">暂无歌词</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Context Menu -->
+<div class="playlist-ctx" id="ctxMenu">
+  <div onclick="ctxRename()">✏️ 重命名</div>
+  <div onclick="ctxDelete()" class="danger">🗑 删除</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  全局状态
+// ═══════════════════════════════════════════════
+const A=document.getElementById('audio'),
+  Q=()=>document.getElementById('quality').value,
+  $=id=>document.getElementById(id);
+let playlist=[],idx=-1,currentSong=null,searchData=[],shuffle=false,ctxTarget=null;
+let lyricMode='linear',lyricData=[],rafId,analyser,spectrumCtx;
+
+// ═══════════════════════════════════════════════
+//  Toast
+// ═══════════════════════════════════════════════
+function toast(m,c=''){const d=document.createElement('div');d.className='toast '+c;d.textContent=m;$('toasts').appendChild(d);setTimeout(()=>d.remove(),2500)}
+
+// ═══════════════════════════════════════════════
+//  导航 & 视图
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+    el.classList.add('active');
+    switchView(el.dataset.view);
+  });
+});
+
+function switchView(view){
+  $('btnBatch').style.display='none';
+  if(view==='search') $('content').innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">搜索你喜欢的音乐</div><div class="empty-sub">输入关键词开始搜索</div></div>`;
+  else if(view==='downloads') loadDownloads();
+  else if(view==='recent') loadRecent();
+}
+switchView('search');
+
+// ═══════════════════════════════════════════════
+//  搜索
+// ═══════════════════════════════════════════════
+async function search(){
+  const kw=$('keyword').value.trim();if(!kw)return;
+  $('content').innerHTML='<div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">搜索中…</div></div>';
+  try{
+    const r=await fetch(`/api/search?keyword=${encodeURIComponent(kw)}&num=30`),d=await r.json();
+    if(!d.success){toast(d.message,'warn');return}
+    searchData=d.songs;
+    const h=$('btnBatch');h.style.display='inline-block';h.disabled=true;h.textContent='批量下载';
+    if(!d.songs.length){$('content').innerHTML='<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">没有找到相关歌曲</div></div>';return}
+    let html=`<div class="section-title">「${kw}」的搜索结果</div><div class="song-list-header"><span></span><span>歌曲</span><span>专辑</span><span style="text-align:center">⏱</span><span></span></div>`;
+    d.songs.forEach((s,i)=>{
+      html+=`<div class="song-row" ondblclick="playSearchResult(${i})">
+        <span class="idx">${i+1}</span>
+        <div class="info" onclick="playSearchResult(${i})">
+          <img src="${s.cover||''}" onerror="this.style.display='none'" loading="lazy">
+          <div class="meta"><div class="t">${esc(s.name)}</div><div class="a">${esc(s.singer)}</div></div>
+        </div>
+        <span class="album">${esc(s.album)}</span>
+        <span class="dur">${s.duration}</span>
+        <span class="actions">
+          <button onclick="event.stopPropagation();addToPlaylistPrompt('${s.mid}','${escJs(s.name)}','${escJs(s.singer)}','${escJs(s.album)}','${escJs(s.cover)}',${s.interval})" title="添加到播放列表">＋</button>
+          <button onclick="event.stopPropagation();downloadSong('${s.mid}','${escJs(s.name)}','${escJs(s.singer)}','${escJs(s.album)}','${escJs(s.cover)}')" title="下载">⬇</button>
+        </span>
+      </div>`;
+    });
+    $('content').innerHTML=html;
+    // Render checkboxes for batch
+    const hdr=$('content').querySelector('.song-list-header');
+    if(hdr) hdr.children[0].innerHTML='<input type="checkbox" id="selAll" onchange="toggleAll()">';
+    d.songs.forEach((s,i)=>{
+      const row=$('content').querySelectorAll('.song-row')[i];
+      const cb=document.createElement('input');
+      cb.type='checkbox';cb.dataset.mid=s.mid;cb.onchange=updateBatch;
+      const idxCell=row.querySelector('.idx');
+      idxCell.innerHTML='';idxCell.appendChild(cb);
+    });
+  }catch(e){toast('搜索失败','warn')}
+}
+
+function toggleAll(){
+  const c=document.getElementById('selAll')?.checked;
+  document.querySelectorAll('#content input[type=checkbox]').forEach(cb=>cb.checked=c);
+  updateBatch();
+}
+function updateBatch(){
+  const sel=[...document.querySelectorAll('#content input[type=checkbox]')].filter(cb=>cb.checked);
+  const b=$('btnBatch');b.disabled=sel.length===0;b.textContent=sel.length?`下载 (${sel.length})`:'批量下载';
+}
+function playSearchResult(i){
+  const s=searchData[i];if(!s)return;
+  playSong(s.mid,s.name,s.singer,s.cover,s.interval);
+  addHistory(s.mid,s.name,s.singer,s.cover,s.interval);
+  // Mark as playing
+  document.querySelectorAll('.song-row').forEach(r=>r.classList.remove('playing'));
+  const row=document.querySelectorAll('.song-row')[i];
+  if(row)row.classList.add('playing');
+}
+async function batchDownload(){
+  const sel=[...document.querySelectorAll('#content input[type=checkbox]')].filter(cb=>cb.checked);
+  if(!sel.length)return;
+  const data=sel.map(cb=>{const s=searchData.find(x=>x.mid===cb.dataset.mid);return s||{};});
+  const mids=data.map(s=>s.mid).join(',');
+  const names=data.map(s=>s.name).join('||');
+  const singers=data.map(s=>s.singer).join('||');
+  const albums=data.map(s=>s.album||'').join('||');
+  const covers=data.map(s=>s.cover||'').join('||');
+  toast(`正在下载 ${data.length} 首歌…`,'info');
+  try{
+    const r=await fetch(`/api/batch-download?mids=${mids}&names=${encodeURIComponent(names)}&singers=${encodeURIComponent(singers)}&albums=${encodeURIComponent(albums)}&covers=${encodeURIComponent(covers)}&quality=${Q()}`);
+    const d=await r.json();
+    toast(d.message,d.success?'':'warn');
+  }catch(e){toast('下载失败','warn')}
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function escJs(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"')}
+
+// ═══════════════════════════════════════════════
+//  播放器
+// ═══════════════════════════════════════════════
+function playSong(mid,name,singer,cover,interval){
+  currentSong={mid,name,singer,cover,interval};
+  $('npName').textContent=name;$('npArtist').textContent=singer;
+  $('durTime').textContent=fmtTime(interval);
+  if(cover){
+    $('npCover').src=cover;$('npCover').style.display='';$('npCoverFallback').style.display='none';
+    $('vinylImg').src=cover;
+  }else{
+    $('npCover').style.display='none';$('npCoverFallback').style.display='';
+  }
+  A.src=`/api/stream-play?mid=${mid}&quality=${Q()}`;A.play();
+  $('playBtn').textContent='⏸';
+  // Cache cover
+  if(cover) fetch(`/api/covers/cache/${mid}?url=${encodeURIComponent(cover)}`);
+  loadLyrics(mid);
+  // Add to playlist for prev/next
+  if(!playlist.find(s=>s.mid===mid)) playlist.push({mid,name,singer,cover,interval});
+  idx=playlist.findIndex(s=>s.mid===mid);
+  initSpectrum();
+}
+function togglePlay(){if(A.paused){A.play();$('playBtn').textContent='⏸'}else{A.pause();$('playBtn').textContent='▶'}}
+function prevSong(){if(playlist.length){idx=shuffle?Math.floor(Math.random()*playlist.length):(idx-1+playlist.length)%playlist.length;const s=playlist[idx];playSong(s.mid,s.name,s.singer,s.cover,s.interval)}}
+function nextSong(){if(playlist.length){idx=shuffle?Math.floor(Math.random()*playlist.length):(idx+1)%playlist.length;const s=playlist[idx];playSong(s.mid,s.name,s.singer,s.cover,s.interval)}}
+function toggleShuffle(){shuffle=!shuffle;$('shuffleBtn').style.color=shuffle?'var(--accent)':'';toast(shuffle?'随机播放':'顺序播放')}
+
+A.addEventListener('ended',nextSong);
+A.addEventListener('timeupdate',()=>{
+  const pct=A.duration?(A.currentTime/A.duration)*100:0;
+  $('progFill').style.width=pct+'%';$('curTime').textContent=fmtTime(A.currentTime);
+  updateLyricHighlight();
+});
+A.addEventListener('loadedmetadata',()=>{$('durTime').textContent=fmtTime(A.duration)});
+function seek(e){const b=e.currentTarget;A.currentTime=(e.offsetX/b.offsetWidth)*A.duration}
+function fmtTime(s){const m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+(sec<10?'0':'')+sec}
+function setVol(e){const pct=e.offsetX/e.currentTarget.offsetWidth;A.volume=Math.max(0,Math.min(1,pct));$('volFill').style.width=(A.volume*100)+'%';updateMuteIcon()}
+function toggleMute(){A.muted=!A.muted;updateMuteIcon()}
+function updateMuteIcon(){$('muteBtn').textContent=A.muted||A.volume===0?'🔇':'🔊'}
+A.volume=0.8;$('volFill').style.width='80%';
+
+// ═══════════════════════════════════════════════
+//  频谱
+// ═══════════════════════════════════════════════
+function initSpectrum(){
+  if(!analyser){
+    try{
+      const ctx=new(window.AudioContext||window.webkitAudioContext)();
+      analyser=ctx.createAnalyser();analyser.fftSize=256;
+      const src=ctx.createMediaElementSource(A);
+      src.connect(analyser);analyser.connect(ctx.destination);
+    }catch(e){return}
+  }
+  spectrumCtx=$('spectrum').getContext('2d');
+  drawSpectrum();
+}
+function drawSpectrum(){
+  if(!analyser||A.paused){if(rafId)cancelAnimationFrame(rafId);rafId=requestAnimationFrame(()=>{spectrumCtx.clearRect(0,0,400,60);drawSpectrum()});return}
+  const c=spectrumCtx,w=400,h=60,data=new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  c.clearRect(0,0,w,h);
+  const barW=3,gap=1,bars=Math.min(64,data.length);
+  for(let i=0;i<bars;i++){
+    const v=data[i]/255,barH=v*h*0.8+2;
+    const x=i*(barW+gap);
+    const grad=c.createLinearGradient(x,0,x,h);
+    grad.addColorStop(0,`hsl(${340+v*20},80%,${50+v*30}%)`);
+    grad.addColorStop(1,'rgba(250,88,106,.3)');
+    c.fillStyle=grad;
+    c.fillRect(x,h-barH,barW,barH);
+  }
+  rafId=requestAnimationFrame(drawSpectrum);
+}
+
+// ═══════════════════════════════════════════════
+//  歌词
+// ═══════════════════════════════════════════════
+async function loadLyrics(mid){
+  try{
+    const r=await fetch(`/api/lyrics?mid=${mid}`),d=await r.json();
+    if(d.success&&d.lyric){lyricData=parseLyric(d.lyric);renderLyrics();return}
+  }catch(e){}
+  lyricData=[];$('lyricLines').innerHTML='<div class="empty"><div class="empty-icon">🎤</div><div class="empty-title">暂无歌词</div></div>';
+}
+function parseLyric(text){
+  const lines=[];
+  text.split('\n').forEach(line=>{
+    const m=line.match(/^\[(\d+):(\d+(?:\.\d+)?)\](.*)/);
+    if(m)lines.push({time:parseInt(m[1])*60+parseFloat(m[2]),text:m[3].trim()||'…'});
+  });
+  return lines.sort((a,b)=>a.time-b.time);
+}
+function renderLyrics(){
+  if(!lyricData.length){$('lyricLines').innerHTML='<div class="empty"><div class="empty-icon">🎤</div><div class="empty-title">暂无歌词</div></div>';return}
+  // Estimate per-word timing: each word in line i gets equal share of time until next line (or +4s)
+  $('lyricLines').innerHTML=lyricData.map((l,i)=>{
+    const nextTime=i+1<lyricData.length?lyricData[i+1].time:l.time+4;
+    const dur=Math.max(0.1,nextTime-l.time);
+    const chars=l.text.split('');
+    const wordMs=dur/chars.length;
+    if(lyricMode==='karaoke'){
+      const words=chars.map((c,j)=>`<span class="word" data-ts="${(l.time+j*wordMs).toFixed(2)}">${c}</span>`).join('');
+      return `<div class="lyric-line karaoke" data-idx="${i}" data-time="${l.time}">${words}</div>`;
+    }
+    const words=chars.map((c,j)=>`<span class="word" data-ts="${(l.time+j*wordMs).toFixed(2)}">${c}</span>`).join('');
+    return `<div class="lyric-line" data-idx="${i}" data-time="${l.time}">${words}</div>`;
+  }).join('');
+}
+function updateLyricHighlight(){
+  if(!lyricData.length)return;
+  const t=A.currentTime;let active=-1;
+  for(let i=lyricData.length-1;i>=0;i--){if(lyricData[i].time<=t){active=i;break}}
+  document.querySelectorAll('#lyricLines .lyric-line').forEach((el,i)=>{
+    const idx=parseInt(el.dataset.idx);
+    const isActive=idx===active;
+    el.classList.toggle('active',isActive);
+    // Per-word highlighting: mark words with timestamp <= current time
+    if(lyricMode==='karaoke'||isActive){
+      el.querySelectorAll('.word').forEach(w=>{
+        const wt=parseFloat(w.dataset.ts||0);
+        w.classList.toggle('sung',wt<=t);
+      });
+    }
+  });
+  const activeEl=document.querySelector('#lyricLines .lyric-line.active');
+  if(activeEl) activeEl.scrollIntoView({block:'center',behavior:'smooth'});
+  drawVinyl(t);
+}
+function switchLyricMode(mode){lyricMode=mode;renderLyrics();saveSetting('lyricMode',mode)}
+function changeLyricColor(c){
+  document.documentElement.style.setProperty('--accent',c);
+  document.documentElement.style.setProperty('--accent2',c);
+  saveSetting('theme',c);
+}
+function toggleLyrics(){
+  $('lyricsPanel').classList.toggle('active');
+  $('lyricBtn').classList.toggle('active');
+  if($('lyricsPanel').classList.contains('active')) drawVinyl(A.currentTime);
+}
+function drawVinyl(t){
+  const c=$('lyricCanvas'),ctx=c.getContext('2d'),w=300,h=300;
+  ctx.clearRect(0,0,w,h);
+  ctx.beginPath();ctx.arc(150,150,140,0,Math.PI*2);
+  ctx.fillStyle='#1a1a1a';ctx.fill();
+  const img=$('vinylImg');
+  if(img.src&&img.complete){
+    ctx.save();ctx.beginPath();ctx.arc(150,150,130,0,Math.PI*2);ctx.clip();
+    ctx.drawImage(img,20,20,260,260);ctx.restore();
+  }
+  const angle=(t*0.5)%(Math.PI*2);
+  ctx.beginPath();ctx.arc(150,150,8,0,Math.PI*2);ctx.fillStyle='#333';ctx.fill();
+  const accent=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#fa586a';
+  ctx.beginPath();ctx.arc(150,150,4,0,Math.PI*2);ctx.fillStyle=accent;ctx.fill();
+  for(let r=30;r<130;r+=18){
+    ctx.beginPath();ctx.arc(150,150,r,angle,angle+Math.PI*1.8);ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=.5;ctx.stroke();
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  播放列表
+// ═══════════════════════════════════════════════
+async function loadPlaylists(){
+  try{
+    const r=await fetch('/api/playlists'),d=await r.json();
+    const list=$('playlistList'),html=d.playlists.map(p=>
+      `<div class="playlist-item" data-name="${p}" onclick="openPlaylist('${p}')" oncontextmenu="ctxPlaylist(event,'${p}')">
+        <span class="pl-icon">📋</span><span>${p}</span>
+      </div>`
+    ).join('');
+    list.innerHTML=html||'<div style="padding:12px;color:var(--sub);font-size:12px;text-align:center">还没有播放列表</div>';
+  }catch(e){}
+}
+async function showCreateModal(){$('createInput').value='';$('createModal').classList.add('active');$('createInput').focus()}
+async function doCreate(){
+  const name=$('createInput').value.trim();if(!name)return;
+  $('createModal').classList.remove('active');
+  try{const r=await fetch(`/api/playlists?name=${encodeURIComponent(name)}`,{method:'POST'});const d=await r.json();
+    if(d.success){toast('创建成功');loadPlaylists()}else toast(d.message,'warn')
+  }catch(e){toast('创建失败','warn')}
+}
+function ctxPlaylist(e,name){e.preventDefault();ctxTarget=name;
+  const m=$('ctxMenu');m.style.left=e.clientX+'px';m.style.top=e.clientY+'px';m.classList.add('show');
+  document.addEventListener('click',()=>m.classList.remove('show'),{once:true});
+}
+function ctxRename(){const m=$('ctxMenu');m.classList.remove('show');if(!ctxTarget)return;
+  $('renameInput').value=ctxTarget;$('renameModal').classList.add('active');$('renameInput').focus();
+}
+async function doRename(){
+  const nn=$('renameInput').value.trim();if(!nn||nn===ctxTarget){$('renameModal').classList.remove('active');return}
+  try{
+    const r=await fetch(`/api/playlists/${ctxTarget}?new_name=${encodeURIComponent(nn)}`,{method:'PUT'});const d=await r.json();
+    $('renameModal').classList.remove('active');
+    if(d.success){loadPlaylists();if($('content').dataset.view==='playlist-'+ctxTarget)openPlaylist(d.name)}else toast(d.message,'warn')
+  }catch(e){toast('重命名失败','warn')}
+}
+async function ctxDelete(){const m=$('ctxMenu');m.classList.remove('show');if(!ctxTarget||!confirm(`确定删除「${ctxTarget}」？`))return;
+  try{await fetch(`/api/playlists/${ctxTarget}`,{method:'DELETE'});toast('已删除');loadPlaylists();
+    if($('content').dataset.view==='playlist-'+ctxTarget)switchView('search');
+  }catch(e){toast('删除失败','warn')}
+}
+async function openPlaylist(name){
+  try{
+    const r=await fetch(`/api/playlists/${name}`),d=await r.json();
+    if(!d.success){toast(d.message,'warn');return}
+    $('content').dataset.view='playlist-'+name;
+    document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+    if(!d.songs.length){
+      $('content').innerHTML=`<div class="section-title">${d.name}</div><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">播放列表为空</div><div class="empty-sub">搜索歌曲后点击 ＋ 添加</div></div>`;
+      return;
+    }
+    let html=`<div class="section-title">${d.name}</div><div class="song-list-header"><span></span><span></span><span>专辑</span><span style="text-align:center">⏱</span><span></span></div>`;
+    d.songs.forEach((s,i)=>{
+      html+=`<div class="song-row" ondblclick="playPlaylistSong('${name}',${i})">
+        <span class="idx">${i+1}</span>
+        <div class="info" onclick="playPlaylistSong('${name}',${i})">
+          <img src="${s.cover||''}" onerror="this.style.display='none'" loading="lazy">
+          <div class="meta"><div class="t">${esc(s.name)}</div><div class="a">${esc(s.singer)}</div></div>
+        </div>
+        <span class="album">${esc(s.album)}</span>
+        <span class="dur">${fmtTime(s.interval)}</span>
+        <span class="actions">
+          <button onclick="event.stopPropagation();removeFromPlaylist('${name}','${s.mid}')" title="移除">✕</button>
+          <button onclick="event.stopPropagation();downloadSong('${s.mid}','${escJs(s.name)}','${escJs(s.singer)}','${escJs(s.album)}','${escJs(s.cover)}')" title="下载">⬇</button>
+        </span>
+      </div>`;
+    });
+    $('content').innerHTML=html;
+    // Store playlist data for play
+    window._playlistData=d.songs;
+  }catch(e){toast('加载失败','warn')}
+}
+function playPlaylistSong(name,i){
+  const s=window._playlistData[i];if(!s)return;
+  playlist=window._playlistData.slice();idx=i;
+  playSong(s.mid,s.name,s.singer,s.cover,s.interval);
+  addHistory(s.mid,s.name,s.singer,s.cover,s.interval);
+}
+function addToPlaylistPrompt(mid,name,singer,album,cover,interval){
+  // Simple: add to a default playlist or show a quick selector
+  fetch('/api/playlists').then(r=>r.json()).then(d=>{
+    if(!d.playlists.length){toast('请先创建播放列表','warn');return}
+    // Add to first playlist for now - could be improved with a selector
+    const pl=d.playlists[0];
+    fetch(`/api/playlists/${pl}/add?mid=${mid}&song_name=${encodeURIComponent(name)}&singer=${encodeURIComponent(singer)}&album=${encodeURIComponent(album)}&cover=${encodeURIComponent(cover)}&interval=${interval}`,{method:'POST'})
+      .then(r=>r.json()).then(d=>{if(d.success)toast(`已添加到「${pl}」`);else toast(d.message,'warn')});
+  });
+}
+async function removeFromPlaylist(name,mid){
+  try{
+    const r=await fetch(`/api/playlists/${name}/remove?mid=${mid}`,{method:'DELETE'});const d=await r.json();
+    if(d.success){toast('已移除');openPlaylist(name)}else toast(d.message,'warn')
+  }catch(e){toast('移除失败','warn')}
+}
+
+// ═══════════════════════════════════════════════
+//  下载 & 本地库
+// ═══════════════════════════════════════════════
+async function downloadSong(mid,name,singer,album,cover){
+  toast('开始下载…','info');
+  try{
+    const r=await fetch(`/api/download?mid=${mid}&quality=${Q()}&name=${encodeURIComponent(name)}&singer=${encodeURIComponent(singer)}&album=${encodeURIComponent(album)}&cover=${encodeURIComponent(cover)}`);
+    const d=await r.json();toast(d.message,d.success?'':'warn');
+  }catch(e){toast('下载失败','warn')}
+}
+async function loadDownloads(){
+  try{
+    const r=await fetch('/api/downloads'),d=await r.json();
+    if(!d.files.length){$('content').innerHTML='<div class="empty"><div class="empty-icon">📥</div><div class="empty-title">还没有下载的歌曲</div></div>';return}
+    let html='<div class="section-title">本地音乐库</div><div class="song-list-header"><span></span><span>文件名</span><span>大小</span><span>时间</span><span></span></div>';
+    d.files.forEach(f=>{
+      html+=`<div class="song-row">
+        <span class="idx">🎵</span>
+        <div class="info"><div class="meta"><div class="t">${esc(f.filename)}</div><div class="a">${f.size_mb} MB</div></div></div>
+        <span class="album">-</span><span class="dur">${f.time}</span>
+        <span class="actions">
+          <button onclick="deleteFile('${escJs(f.filename)}')" title="删除">🗑</button>
+          <button onclick="openFolder()" title="打开文件夹">📂</button>
+        </span>
+      </div>`;
+    });
+    $('content').innerHTML=html;
+  }catch(e){}
+}
+async function deleteFile(name){if(!confirm(`删除 ${name}？`))return;
+  try{await fetch(`/api/delete-download?filename=${encodeURIComponent(name)}`);toast('已删除');loadDownloads()}catch(e){toast('删除失败','warn')}
+}
+async function openFolder(){await fetch('/api/open-folder');toast('已打开下载文件夹','info')}
+
+// ═══════════════════════════════════════════════
+//  历史
+// ═══════════════════════════════════════════════
+async function addHistory(mid,name,singer,cover,interval){
+  try{await fetch(`/api/history?mid=${mid}&name=${encodeURIComponent(name)}&singer=${encodeURIComponent(singer)}&cover=${encodeURIComponent(cover)}&interval=${interval}`,{method:'POST'})}catch(e){}
+}
+async function loadRecent(){
+  try{
+    const r=await fetch('/api/history'),d=await r.json();
+    if(!d.recent.length){$('content').innerHTML='<div class="empty"><div class="empty-icon">🕐</div><div class="empty-title">还没有播放记录</div></div>';return}
+    let html='<div class="section-title">最近播放</div><div class="song-list-header"><span></span><span></span><span>歌手</span><span style="text-align:center">⏱</span><span></span></div>';
+    d.recent.forEach(s=>{
+      html+=`<div class="song-row" ondblclick="playSong('${s.mid}','${escJs(s.name)}','${escJs(s.singer)}','${escJs(s.cover)}',${s.interval})">
+        <span class="idx">🕐</span>
+        <div class="info" onclick="playSong('${s.mid}','${escJs(s.name)}','${escJs(s.singer)}','${escJs(s.cover)}',${s.interval})">
+          <img src="${s.cover||''}" onerror="this.style.display='none'" loading="lazy">
+          <div class="meta"><div class="t">${esc(s.name)}</div><div class="a">${esc(s.singer)}</div></div>
+        </div>
+        <span class="album">${esc(s.singer)}</span>
+        <span class="dur">${fmtTime(s.interval)}</span>
+        <span class="actions">
+          <button onclick="event.stopPropagation();downloadSong('${s.mid}','${escJs(s.name)}','${escJs(s.singer)}','','${escJs(s.cover)}')" title="下载">⬇</button>
+        </span>
+      </div>`;
+    });
+    $('content').innerHTML=html;
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════
+//  封面上传
+// ═══════════════════════════════════════════════
+async function uploadCover(){
+  const file=$('coverInput').files[0];if(!file||!currentSong)return;
+  const fd=new FormData();fd.append('file',file);
+  try{
+    const r=await fetch(`/api/covers/upload/${currentSong.mid}`,{method:'POST',body:fd}),d=await r.json();
+    if(d.success){
+      const url=d.url+'?t='+Date.now();
+      $('npCover').src=url;$('vinylImg').src=url;toast('封面已更新');
+    }else toast(d.message,'warn')
+  }catch(e){toast('上传失败','warn')}
+}
+
+// ═══════════════════════════════════════════════
+//  登录
+// ═══════════════════════════════════════════════
+async function checkLogin(){
+  try{const r=await fetch('/api/login/check'),d=await r.json();
+    if(d.logged_in){$('loginBtn').textContent='👤 已登录';$('loginBtn').classList.add('logged-in')}
+  }catch(e){}
+}
+async function showLogin(){
+  $('loginModal').classList.add('active');
+  $('qrMsg').textContent='正在获取二维码…';
+  try{
+    const r=await fetch('/api/login/qrcode'),d=await r.json();
+    if(d.success&&d.img){
+      $('qrImg').src=d.img;$('qrImg').style.display='';$('qrMsg').textContent='请使用 QQ 扫描二维码';
+      pollLogin();
+    }else{$('qrMsg').textContent=d.message||'扫码登录暂不可用，请手动放置 credential.json'}
+  }catch(e){$('qrMsg').textContent='扫码登录暂不可用'}
+}
+let _pollTimer=null;
+async function pollLogin(){
+  if(_pollTimer)clearInterval(_pollTimer);
+  _pollTimer=setInterval(async()=>{
+    try{
+      const r=await fetch('/api/login/status'),d=await r.json();
+      if(d.status==='done'){$('qrMsg').textContent='✅ 登录成功！';setTimeout(()=>{$('loginModal').classList.remove('active');checkLogin()},1000);clearInterval(_pollTimer);return}
+      if(d.status==='scanned'){$('qrMsg').textContent='📱 已扫描，请在手机上确认';return}
+      if(d.status==='confirmed'){$('qrMsg').textContent='✅ 已确认，正在登录…';return}
+      if(d.status==='expired'){$('qrMsg').textContent='⏰ 二维码已过期，请重新获取';clearInterval(_pollTimer);return}
+      if(d.status==='refused'){$('qrMsg').textContent='❌ 已取消登录';clearInterval(_pollTimer);return}
+      if(d.status==='error'){$('qrMsg').textContent='❌ '+d.message;clearInterval(_pollTimer);return}
+    }catch(e){}
+  },2000);
+  setTimeout(()=>{clearInterval(_pollTimer);$('qrMsg').textContent='⏰ 超时，请重试'},120000);
+}
+
+// ═══════════════════════════════════════════════
+//  设置
+// ═══════════════════════════════════════════════
+async function loadSettings(){
+  try{
+    const r=await fetch('/api/settings'),d=await r.json();
+    if(d.quality) $('quality').value=d.quality;
+    if(d.lyricMode){lyricMode=d.lyricMode;$('lyricModeSel').value=d.lyricMode}
+    if(d.theme){document.documentElement.style.setProperty('--accent',d.theme);document.documentElement.style.setProperty('--accent2',d.theme);$('lyricColor').value=d.theme}
+  }catch(e){}
+}
+async function saveSetting(key,value){
+  try{await fetch(`/api/settings?key=${key}&value=${encodeURIComponent(JSON.stringify(value))}`,{method:'POST'})}catch(e){}
+}
+$('quality').addEventListener('change',()=>saveSetting('quality',$('quality').value));
+$('lyricModeSel').addEventListener('change',function(){saveSetting('lyricMode',this.value)});
+
+// ═══════════════════════════════════════════════
+//  快捷键
+// ═══════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.code==='Space'){e.preventDefault();togglePlay()}
+  if(e.code==='ArrowLeft')A.currentTime-=5;
+  if(e.code==='ArrowRight')A.currentTime+=5;
+  if(e.code==='KeyL')toggleLyrics();
+});
+
+// ═══════════════════════════════════════════════
+//  初始化
+// ═══════════════════════════════════════════════
+loadPlaylists();loadSettings();checkLogin();
+setInterval(loadPlaylists,30000); // 每 30s 刷新播放列表
+</script>
+</body>
+</html>

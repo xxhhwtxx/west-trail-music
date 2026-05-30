@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+downloads/
+covers/
+playlists/
+*.pyc
+*.spec
+dist/
+build/
+Desktop.ini
+Thumbs.db
+credential.json
