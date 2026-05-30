@@ -53,6 +53,10 @@ def load_credential():
     if CREDENTIAL_FILE.exists():
         with open(CREDENTIAL_FILE, "r", encoding="utf-8") as f:
             return Credential(**json.load(f))
+    # Fallback: read from environment variable (for Railway/Render deployment)
+    env_cred = os.environ.get("CREDENTIAL_JSON", "")
+    if env_cred:
+        return Credential(**json.loads(env_cred))
     return None
 
 def save_credential(cred: Credential):
