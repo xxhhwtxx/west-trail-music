@@ -86,6 +86,16 @@ async def play_url(mid: str, quality: str = "128mp3"):
     except: pass
     return {"success": False}
 
+@app.get("/api/stream-play")
+async def stream_play(mid: str, quality: str = "128mp3"):
+    try:
+        u = await client().song.get_song_urls([SongFileInfo(mid=mid)], file_type=Q.get(quality, SongFileType.MP3_128))
+        if not (u and u.data and u.data[0].purl): return StreamingResponse(iter([]), status_code=404)
+        import requests as _r
+        resp = _r.get(f"http://ws.stream.qqmusic.qq.com/{u.data[0].purl}", headers={"User-Agent":"Mozilla/5.0","Referer":"https://y.qq.com/"}, stream=True, timeout=30)
+        return StreamingResponse(resp.iter_content(chunk_size=65536), status_code=200, media_type="audio/mpeg")
+    except: return StreamingResponse(iter([]), status_code=404)
+
 @app.get("/api/lyrics")
 async def lyrics(mid: str):
     try: return {"success": True, "lyric": (await client().lyric.get_lyric(mid)).decrypt().lyric}
@@ -163,6 +173,35 @@ async def his_get(uid: str):
 # ── 反馈 ────────────────────────────────────────
 APP_EMAIL = "2810757607@qq.com"
 APP_EMAIL_KEY = os.environ.get("EMAIL_AUTH_CODE", "iypidfdqejnidgag")
+
+# ── 封面缓存 ────────────────────────────────────
+@app.get("/api/covers/cache/{mid}")
+async def cover_cache(mid: str, url: str = ""):
+    try:
+        if not url: return {"success": False}
+        p = BASE / "covers" / f"{mid}.jpg"
+        if not p.exists():
+            import urllib.request as _ur
+            req = _ur.Request(url, headers={"Referer":"https://y.qq.com/","User-Agent":"Mozilla/5.0"})
+            with _ur.urlopen(req, timeout=8) as r: p.write_bytes(r.read())
+        return {"success": True}
+    except: return {"success": False}
+
+# ── 下载 ────────────────────────────────────────
+@app.get("/api/download")
+async def download(mid: str, quality: str = "320mp3", name: str = "", singer: str = "", album: str = "", cover: str = ""):
+    try:
+        u = await client().song.get_song_urls([SongFileInfo(mid=mid)], file_type=Q.get(quality, SongFileType.MP3_320))
+        if not (u and u.data and u.data[0].purl): return {"success": False, "message": "无法获取下载链接"}
+        url = f"http://ws.stream.qqmusic.qq.com/{u.data[0].purl}"
+        ext = {"128mp3":"mp3","320mp3":"mp3","flac":"flac"}.get(quality, "mp3")
+        safe = f"{singer} - {name}" if singer and name else mid
+        safe = "".join(c for c in safe if c not in r'\/:*?"<>|')
+        fp = BASE / "downloads" / f"{safe}.{ext}"
+        (BASE / "downloads").mkdir(exist_ok=True)
+        await asyncio.to_thread(lambda: __import__('urllib.request').request.urlretrieve(url, str(fp)))
+        return {"success": True, "message": f"下载完成: {fp.name}"}
+    except Exception as e: return {"success": False, "message": str(e)}
 
 @app.post("/api/feedback")
 async def feedback(uid: str = "", nickname: str = "", content: str = ""):
