@@ -518,7 +518,10 @@ function playSong(mid,name,singer,cover,interval){
   }else{
     $('npCover').style.display='none';$('npCoverFallback').style.display='';
   }
-  A.src=`/api/stream-play?mid=${mid}&quality=${Q()}`;A.play();
+  // Try direct CDN playback first, fallback to stream proxy
+  fetch(`/api/play-url?mid=${mid}&quality=${Q()}`).then(r=>r.json()).then(d=>{
+    if(d.success&&d.url){A.src=d.url;A.play();}
+  }).catch(()=>{A.src=`/api/stream-play?mid=${mid}&quality=${Q()}`;A.play();});
   $('playBtn').textContent='⏸';
   // Cache cover
   if(cover) fetch(`/api/covers/cache/${mid}?url=${encodeURIComponent(cover)}`);
