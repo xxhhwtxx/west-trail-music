@@ -223,9 +223,9 @@ async def stream_play(mid: str = Query(...), quality: str = Query(default="128mp
     urls = await get_client().song.get_song_urls([SongFileInfo(mid=mid)], file_type=ft, credential=cred)
     if not urls.data or not urls.data[0].purl: return StreamingResponse(iter([]),status_code=404)
     cdn = f"http://ws.stream.qqmusic.qq.com/{urls.data[0].purl}"
-    req=urllib.request.Request(cdn,headers={"User-Agent":"Mozilla/5.0","Referer":"https://y.qq.com/"})
-    resp=urllib.request.urlopen(req,timeout=30)
-    return StreamingResponse(iter(lambda:resp.read(65536),b""),status_code=200,media_type="audio/mpeg")
+    import requests as _r
+    resp = _r.get(cdn, headers={"User-Agent":"Mozilla/5.0","Referer":"https://y.qq.com/"}, stream=True, timeout=30)
+    return StreamingResponse(resp.iter_content(chunk_size=65536), status_code=200, media_type="audio/mpeg")
 
 
 # ── 歌词 ──────────────────────────────────────────

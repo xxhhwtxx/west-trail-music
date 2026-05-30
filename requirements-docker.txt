@@ -3,3 +3,4 @@ uvicorn>=0.23.0
 qqmusic-api-python
 mutagen>=1.47.0
 python-multipart
+requests
