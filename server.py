@@ -3,6 +3,7 @@ from pathlib import Path
 from email.mime.text import MIMEText
 from email.header import Header
 from fastapi import FastAPI, Query
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from qqmusic_api import Client, Credential
 from qqmusic_api.modules.song import SongFileInfo, SongFileType
@@ -49,7 +50,11 @@ def _song(s):
 app = FastAPI(title="WestTrailMusic")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    html = BASE / "index.html"
+    return HTMLResponse(html.read_text(encoding="utf-8")) if html.exists() else HTMLResponse("<h1>WestTrailMusic API</h1>")
+
 @app.get("/health")
 async def health(): return {"status": "ok", "service": "WestTrailMusic"}
 
