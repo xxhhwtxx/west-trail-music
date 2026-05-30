@@ -166,6 +166,10 @@ app.add_middleware(
 async def index():
     return HTMLResponse((_RESOURCE_DIR / "index.html").read_text(encoding="utf-8"))
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
 
 # ── 搜索 ──────────────────────────────────────────
 @app.get("/api/search")

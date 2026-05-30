@@ -2,6 +2,6 @@
 builder = "docker"
 
 [deploy]
-healthcheckPath = "/api/search"
+healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "always"
