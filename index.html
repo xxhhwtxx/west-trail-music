@@ -52,6 +52,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sa
 .search-box input{flex:1;background:none;border:none;color:var(--text);font-size:14px;outline:none}
 .search-box input::placeholder{color:var(--sub)}
 .search-box svg{color:var(--sub);flex-shrink:0}
+.search-box .search-go{display:none;background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0}
+@media(max-width:768px){.search-box .search-go{display:block}}
 .top-ctrls{display:flex;align-items:center;gap:10px}
 .top-ctrls select{background:var(--surface);color:var(--text);border:none;padding:8px 14px;border-radius:8px;font-size:12px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23fff'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
 .btn{padding:9px 20px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.15s}
@@ -292,6 +294,7 @@ input[type=checkbox]:checked::after{content:'';position:absolute;left:4px;top:1p
       <div class="search-box">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="keyword" placeholder="歌曲、艺人或专辑…" onkeydown="if(event.key==='Enter')search()">
+        <button class="search-go" onclick="search()">搜索</button>
       </div>
       <div class="top-ctrls">
         <select id="quality" onchange="saveSetting('quality',this.value)">
