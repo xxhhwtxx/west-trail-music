@@ -323,16 +323,7 @@ async def download(mid: str, quality: str = "320mp3", name: str = "", singer: st
     try:
         u = await client().song.get_song_urls([SongFileInfo(mid=mid)], file_type=Q.get(quality, SongFileType.MP3_320))
         if not (u and u.data and u.data[0].purl): return {"success": False, "message": "无法获取下载链接"}
-        url = f"http://ws.stream.qqmusic.qq.com/{u.data[0].purl}"
-        ext = {"128mp3":"mp3","320mp3":"mp3","ogg":"ogg","flac":"flac"}.get(quality, "mp3")
-        safe = f"{singer} - {name}" if singer and name else mid
-        safe = "".join(c for c in safe if c not in r'\/:*?"<>|')
-        filename = f"{safe}.{ext}"
-        import requests as _r
-        resp = _r.get(url, headers={"User-Agent":"Mozilla/5.0","Referer":"https://y.qq.com/"}, stream=True, timeout=60)
-        return StreamingResponse(resp.iter_content(chunk_size=65536),
-            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
-            media_type="audio/mpeg")
+        return {"success": True, "url": f"http://ws.stream.qqmusic.qq.com/{u.data[0].purl}"}
     except Exception as e: return {"success": False, "message": str(e)}
 
 @app.get("/api/batch-download")
