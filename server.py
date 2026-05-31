@@ -1,5 +1,6 @@
 import asyncio, json, os, re, sys, time, smtplib
 from pathlib import Path
+from urllib.parse import quote
 from email.mime.text import MIMEText
 from email.header import Header
 from fastapi import FastAPI, Query, UploadFile, File
@@ -330,7 +331,7 @@ async def download(mid: str, quality: str = "320mp3", name: str = "", singer: st
         import requests as _r
         resp = _r.get(url, headers={"User-Agent":"Mozilla/5.0","Referer":"https://y.qq.com/"}, stream=True, timeout=60)
         return StreamingResponse(resp.iter_content(chunk_size=65536),
-            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{__import__('urllib.parse').quote(filename)}"},
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
             media_type="audio/mpeg")
     except Exception as e: return {"success": False, "message": str(e)}
 
