@@ -1673,13 +1673,8 @@ async function removeFromPlaylist(name,mid){
 //  下载 & 本地库
 // ═══════════════════════════════════════════════
 async function downloadSong(mid,name,singer,album,cover){
-  toast('正在获取下载链接…','info');
-  try{
-    const r=await fetch(`/api/download?mid=${mid}&quality=${Q()}&name=${encodeURIComponent(name)}&singer=${encodeURIComponent(singer)}&album=${encodeURIComponent(album)}&cover=${encodeURIComponent(cover)}`);
-    const d=await r.json();
-    if(d.success&&d.url){window.open(d.url);toast('下载已开始')}
-    else toast(d.message||'下载失败','warn');
-  }catch(e){toast('下载失败','warn')}
+  toast('正在下载…','info');
+  window.open(`/api/download?mid=${mid}&quality=${Q()}&name=${encodeURIComponent(name)}&singer=${encodeURIComponent(singer)}&album=${encodeURIComponent(album)}&cover=${encodeURIComponent(cover)}`);
 }
 async function loadDownloads(){
   try{
