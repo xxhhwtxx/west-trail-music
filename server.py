@@ -326,11 +326,12 @@ async def download(mid: str, quality: str = "320mp3", name: str = "", singer: st
         ext = {"128mp3":"mp3","320mp3":"mp3","ogg":"ogg","flac":"flac"}.get(quality, "mp3")
         safe = f"{singer} - {name}" if singer and name else mid
         safe = "".join(c for c in safe if c not in r'\/:*?"<>|')
-        fp = BASE / "downloads" / f"{safe}.{ext}"
-        (BASE / "downloads").mkdir(exist_ok=True)
-        import urllib.request as _ur
-        await asyncio.to_thread(_ur.urlretrieve, url, str(fp))
-        return {"success": True, "message": f"下载完成: {fp.name}"}
+        filename = f"{safe}.{ext}"
+        import requests as _r
+        resp = _r.get(url, headers={"User-Agent":"Mozilla/5.0","Referer":"https://y.qq.com/"}, stream=True, timeout=60)
+        return StreamingResponse(resp.iter_content(chunk_size=65536),
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{__import__('urllib.parse').quote(filename)}"},
+            media_type="audio/mpeg")
     except Exception as e: return {"success": False, "message": str(e)}
 
 @app.get("/api/batch-download")
