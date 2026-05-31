@@ -23,6 +23,8 @@ def save(p, d): p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encodi
 def client():
     c = BASE / "credential.json"
     if c.exists(): return Client(credential=Credential(**json.load(open(c))))
+    env_cred = os.environ.get("CREDENTIAL_JSON", "")
+    if env_cred: return Client(credential=Credential(**json.loads(env_cred)))
     return Client()
 
 Q = {"128mp3": SongFileType.MP3_128, "320mp3": SongFileType.MP3_320, "ogg": SongFileType.MP3_320, "flac": SongFileType.FLAC}
