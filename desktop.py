@@ -50,10 +50,12 @@ def main():
     webview.create_window(
         "West Trail Music",
         f"http://127.0.0.1:{port}",
-        width=1100,
-        height=750,
+        width=1050,
+        height=720,
         resizable=True,
-        background_color="#000000",
+        background_color="#121212",
+        text_select=False,
+        frameless=False  # 若要极简可改True，但目前通过UI实现苹果风
     )
     webview.start()
 
