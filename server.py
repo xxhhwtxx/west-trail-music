@@ -8,6 +8,8 @@ from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from qqmusic_api import Client, Credential
 from qqmusic_api.modules.song import SongFileInfo, SongFileType
+from qqmusic_api.modules.login import QRLoginType
+import base64, io
 
 # ── 路径 ────────────────────────────────────────
 BASE = Path(__file__).parent
@@ -150,6 +152,87 @@ async def credential_set(cred_json: str = ""):
         return {"success": True, "musicid": cred.musicid}
     except Exception as e:
         return {"success": False, "message": str(e)}
+
+# ── 二维码登录 ────────────────────────────────
+_qr_store = {}  # identifier -> QR object
+
+@app.get("/api/login/qrcode")
+async def login_qrcode(type: str = "qq"):
+    """获取登录二维码 (qq/wx)"""
+    lt = QRLoginType.QQ if type == "qq" else QRLoginType.WX
+    try:
+        qr = await client().login.get_qrcode(lt)
+        buf = io.BytesIO()
+        qr.save(buf)
+        img_b64 = base64.b64encode(buf.getvalue()).decode()
+        _qr_store[qr.identifier] = qr
+        return {
+            "success": True,
+            "id": qr.identifier,
+            "image": f"data:image/png;base64,{img_b64}",
+        }
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.get("/api/login/qrcode/check")
+async def login_qrcode_check(id: str):
+    """检查扫码状态"""
+    qr = _qr_store.get(id)
+    if not qr:
+        return {"success": False, "message": "二维码已过期或不存在"}
+    try:
+        result = await client().login.check_qrcode(qr)
+        if result.is_done and result.credential:
+            save(BASE / "credential.json", result.credential.model_dump(by_alias=True))
+            _qr_store.pop(id, None)
+            return {"success": True, "done": True, "message": "登录成功"}
+        return {"success": True, "done": False, "event": result.event.value}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page():
+    """扫码登录页面"""
+    return HTMLResponse("""<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>登录 WestTrail</title>
+<style>body{background:#121212;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column}
+#qr{width:220px;height:220px;border-radius:12px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;margin:20px 0}
+#qr img{width:200px;height:200px;border-radius:8px}
+#status{margin-top:12px;font-size:15px;color:rgba(255,255,255,.7)}
+#status.success{color:#4caf50}
+button{background:#fa586a;color:#fff;border:none;padding:10px 24px;border-radius:20px;font-size:14px;cursor:pointer;margin-top:16px}
+</style></head><body>
+<h2>WestTrail Music</h2><p style="color:#999;font-size:13px">请用 QQ音乐/QQ/微信 扫码登录</p>
+<div id="qr"><span id="loading" style="color:#666">加载中…</span></div>
+<div id="status">等待扫码…</div>
+<button onclick="newCode()">换一张</button>
+<script>
+let qrId='',timer=null;
+async function load(){
+  document.getElementById('loading').style.display='block';
+  const r=await fetch('/api/login/qrcode?type=qq'),d=await r.json();
+  if(d.success){
+    qrId=d.id;
+    document.getElementById('qr').innerHTML='<img src="'+d.image+'">';
+    document.getElementById('loading').style.display='none';
+    startCheck();
+  }else{
+    document.getElementById('status').textContent='获取失败: '+d.message;
+  }
+}
+function newCode(){clearInterval(timer);load();}
+async function check(){
+  if(!qrId)return;
+  const r=await fetch('/api/login/qrcode/check?id='+qrId),d=await r.json();
+  if(d.done){
+    document.getElementById('status').textContent='✅ '+d.message;
+    document.getElementById('status').className='success';
+    clearInterval(timer);
+  }else if(d.event)document.getElementById('status').textContent='状态: '+d.event;
+}
+function startCheck(){clearInterval(timer);timer=setInterval(check,2000);}
+load();
+</script></body></html>""")
 
 @app.post("/api/credential/refresh")
 async def credential_refresh():
