@@ -126,6 +126,14 @@ async def search_suggest(keyword: str):
         print(f"[搜索建议请求异常] {e}")
         return {"success": False}
 
+@app.get("/api/credential/export")
+async def credential_export():
+    """导出当前凭证 JSON (用于设置环境变量)"""
+    c = BASE / "credential.json"
+    if not c.exists():
+        return {"success": False, "message": "无凭证"}
+    return {"success": True, "credential": json.load(open(c))}
+
 @app.get("/api/credential/status")
 async def credential_status():
     """查看凭证状态"""
