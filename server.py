@@ -139,6 +139,18 @@ async def credential_status():
         "musicid": cred.musicid,
     }
 
+@app.post("/api/credential/set")
+async def credential_set(cred_json: str = ""):
+    """直接设置凭证 JSON"""
+    if not cred_json:
+        return {"success": False, "message": "缺少凭证 JSON"}
+    try:
+        cred = Credential(**json.loads(cred_json))
+        save(BASE / "credential.json", cred.model_dump(by_alias=True))
+        return {"success": True, "musicid": cred.musicid}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
 @app.post("/api/credential/refresh")
 async def credential_refresh():
     """刷新凭证 (延长有效期)"""
