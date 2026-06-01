@@ -162,9 +162,7 @@ async def login_qrcode(type: str = "qq"):
     lt = QRLoginType.QQ if type == "qq" else QRLoginType.WX
     try:
         qr = await client().login.get_qrcode(lt)
-        buf = io.BytesIO()
-        qr.save(buf)
-        img_b64 = base64.b64encode(buf.getvalue()).decode()
+        img_b64 = base64.b64encode(qr.data).decode()
         _qr_store[qr.identifier] = qr
         return {
             "success": True,
