@@ -1344,10 +1344,9 @@ function playSong(mid,name,singer,cover,interval){
     if($('lyricAlbumArt')) $('lyricAlbumArt').src = '';
     if($('lyricAlbumArtBg')) $('lyricAlbumArtBg').src = '';
   }
-  fetch(`/api/play-url?mid=${mid}&quality=${Q()}`).then(r=>r.json()).then(d=>{
-    if(d.success&&d.url){A.src=d.url;var p=A.play();if(p!==undefined)p.catch(()=>{});}
-    else{A.src=`/api/stream-play?mid=${mid}&quality=${Q()}`;A.play();}
-  });
+  // 直接用服务端代理流，避免 HTTP 混合内容被浏览器拦截
+  A.src=`/api/stream-play?mid=${mid}&quality=${Q()}`;
+  A.play().catch(()=>{});
   $('playBtn').textContent='⏸';
   // Cache cover
   if(cover) fetch(`/api/covers/cache/${mid}?url=${encodeURIComponent(cover)}`);
