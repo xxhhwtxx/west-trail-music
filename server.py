@@ -124,14 +124,41 @@ async def search_suggest(keyword: str):
         print(f"[搜索建议请求异常] {e}")
         return {"success": False}
 
+@app.get("/api/credential/status")
+async def credential_status():
+    """查看凭证状态"""
+    c = BASE / "credential.json"
+    if not c.exists():
+        return {"success": True, "exists": False, "message": "未配置凭证"}
+    cred = Credential(**json.load(open(c)))
+    return {
+        "success": True,
+        "exists": True,
+        "expired": cred.is_expired(),
+        "login_type": cred.login_type,
+        "musicid": cred.musicid,
+    }
+
+@app.post("/api/credential/refresh")
+async def credential_refresh():
+    """刷新凭证 (延长有效期)"""
+    c = BASE / "credential.json"
+    if not c.exists():
+        return {"success": False, "message": "没有可刷新的凭证"}
+    try:
+        cred = Credential(**json.load(open(c)))
+        new_cred = await client().login.refresh_credential(cred)
+        save(c, new_cred.model_dump(by_alias=True))
+        return {"success": True, "message": "凭证已刷新", "expired": new_cred.is_expired()}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
 @app.post("/api/login/cookie")
 async def login_cookie(cookie: str):
+    """通过 Cookie 登录并保存凭证"""
     try:
-        # 简单校验格式并保存
         cred = Credential(cookie=cookie)
-        # 尝试刷新看看是否有效
-        await cred.refresh()
-        save(BASE / "credential.json", cred.dump())
+        save(BASE / "credential.json", cred.model_dump(by_alias=True))
         return {"success": True}
     except Exception as e:
         return {"success": False, "message": str(e)}
