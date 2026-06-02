@@ -240,20 +240,6 @@ function startCheck(){clearInterval(timer);timer=setInterval(check,2000);}
 load();
 </script></body></html>""")
 
-@app.post("/api/credential/refresh")
-async def credential_refresh():
-    """刷新凭证 (延长有效期)"""
-    c = BASE / "credential.json"
-    if not c.exists():
-        return {"success": False, "message": "没有可刷新的凭证"}
-    try:
-        cred = Credential(**json.load(open(c)))
-        new_cred = await client().login.refresh_credential(cred)
-        save(c, new_cred.model_dump(by_alias=True))
-        return {"success": True, "message": "凭证已刷新", "expired": new_cred.is_expired()}
-    except Exception as e:
-        return {"success": False, "message": str(e)}
-
 @app.post("/api/login/cookie")
 async def login_cookie(cookie: str):
     """通过 Cookie 登录并保存凭证"""
